@@ -64,6 +64,31 @@ export const bookAppointment = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+export const getDoctorSlots = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { date } = req.query;
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    const reqDate = new Date(date).toISOString().split("T")[0];
+
+    const slots = doctor.availableSlots.filter(
+      (s) => s.date.toISOString().split("T")[0] === reqDate
+    );
+
+    res.json({
+      success: true,
+      slots,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 
 // @desc Get appointments for logged-in user
@@ -75,6 +100,38 @@ export const getMyAppointments = async (req, res) => {
     res.json(appointments);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const cancelAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    // Free doctor slot
+    await Doctor.updateOne(
+      {
+        _id: appointment.doctorId,
+        "availableSlots.date": new Date(appointment.date),
+        "availableSlots.time": appointment.time,
+      },
+      {
+        $set: { "availableSlots.$.status": "available" },
+      }
+    );
+
+    appointment.status = "cancelled";
+    await appointment.save();
+
+    res.json({ message: "Appointment cancelled" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
