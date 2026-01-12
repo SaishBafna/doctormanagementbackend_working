@@ -10,6 +10,41 @@ export const createDoctor = async (req, res) => {
     res.status(400).json({ message: "Invalid data", error: err.message });
   }
 };
+export const toggleDoctorStatus = async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    doctor.status = doctor.status === "Active" ? "Inactive" : "Active";
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: `Doctor ${doctor.status}`,
+      status: doctor.status,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+export const getActiveDoctors = async (req, res) => {
+  try {
+    const doctors = await Doctor.find({ status: "Active" })
+      .sort({ rating: -1 });
+
+    res.json({
+      success: true,
+      total: doctors.length,
+      data: doctors,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 // @desc Get all doctors
 // export const getDoctors = async (req, res) => {
